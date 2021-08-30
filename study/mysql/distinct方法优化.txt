@@ -1,0 +1,14 @@
+distinct方法优化
+
+
+select ra_organization_code_,ra_company_name_,connect_man_,connect_phone_,ra_ct_ As '安全码创建日期', ra_end_time_ as '安全码有效期', confirm_type_ AS '认证状态' from resources_adjust_ a where marketing_type_code = 0 and (
+a.ra_organization_code_ in (select distinct b.g_c_id_  from house_ b where unix_timestamp(b.et_)  > unix_timestamp( '2011-07-31 00:00:00' )) 
+or
+a.ra_organization_code_ in (select distinct b.g_c_id_ from chengzu_
+
+b where unix_timestamp(b.et_)  > unix_timestamp( '2011-07-31 00:00:00' ))
+or
+a.ra_organization_code_ in (select distinct b.g_c_id_ from qian_yue_ b where unix_timestamp(b.et_)  >  unix_timestamp( '2011-07-31 00:00:00' ))
+or
+a.ra_organization_code_ in (select distinct b.g_c_id_ from table_balance_sheet_ b where unix_timestamp(b.et_)  > unix_timestamp( '2011-07-31 00:00:00' ))
+) limit 0,500;

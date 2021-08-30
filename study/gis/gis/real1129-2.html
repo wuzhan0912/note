@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Intro to FeatureLayer - 4.9</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+    <script src="https://js.arcgis.com/4.9/"></script>
+
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+
+    <script>
+        require([
+                "esri/Map",
+                "esri/views/MapView",
+                "esri/layers/FeatureLayer",
+                "esri/layers/GraphicsLayer", "esri/Graphic"
+            ],
+            function (
+                Map, MapView,
+                FeatureLayer, GraphicsLayer, Graphic
+            ) {
+
+                var map = new Map({
+                    basemap: "hybrid" //dark-gray
+                });
+
+                var view = new MapView({
+                    container: "viewDiv",
+                    map: map,
+
+                    center: [114.11, 22.35],
+                    scale: 500000
+                });
+
+
+                var presentShowList = [];
+
+                /********************
+                 * Add feature layer
+                 ********************/
+
+                // Carbon storage of trees in Warren Wilson College.
+                var featureLayer = new FeatureLayer({
+                    url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_WFL1/FeatureServer/3"
+                });
+
+                map.add(featureLayer);
+
+                featureLayer.when(function () {
+                    QueryAndModify();
+                });
+
+
+
+                function QueryAndModify() {
+                    // apply the new renderer to the layer
+
+                    hoverPromise = featureLayer.queryFeatures(featureLayer.createQuery());
+                    hoverPromise.then(
+                        function (result) {
+                            var features = result.features;
+
+
+                            window.setInterval(function () {
+                                modify(features);
+                            }, 1000);
+
+
+
+                        });
+                }
+
+                function isIn(id) {
+                    for (var i = 0; i < presentShowList.length; i++) {
+                        if (id == presentShowList[i]) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                function modify(features) {
+
+                    for (var i = 0; i < features.length; i++) {
+                        if (!isIn(i)) {
+                            presentShowList.push(i);
+                            return render(features, i);;
+                        }
+                    }
+
+                }
+
+
+                function render(features, index) {
+
+                    console.log(JSON.stringify(presentShowList));
+                    if (index == 0) {
+                        var staticLayer = createLayer(features, -1);
+                        staticLayer.title = "staticLayer"
+                        map.add(staticLayer)
+                    }
+
+                    var layer = createLayer(features, index);
+                    map.add(layer);
+                    console.log("render end ...")
+
+                }
+
+                function createLayer(features, index) {
+
+                    var graphics = []
+
+                    if (index == -1) {
+                        for (var i = 0; i < features.length; i++) {
+                            var graphicA = new Graphic(); // graphic with line geometry
+                            graphicA.geometry = features[i].geometry;
+                            graphicA.attributes = features[i].attributes;
+                            graphicA.attributes["pension_quota"] = 0
+                            graphicA.visible = false;
+                            graphics.push(graphicA)
+
+                        }
+                    } else {
+                        var graphicA = new Graphic(); // graphic with line geometry
+                        graphicA.geometry = features[index].geometry;
+                        graphicA.attributes = features[index].attributes;
+                        graphicA.attributes["pension_quota"] = 120
+                        graphicA.visible = false;
+                        graphics.push(graphicA)
+                    }
+
+                    var fields = [{
+                        name: "id",
+                        alias: "id",
+                        type: "oid"
+                    }, {
+                        name: "name",
+                        alias: "name",
+                        type: "string"
+                    }, {
+                        name: "pension_quota",
+                        alias: "pension_quota",
+                        type: "double"
+                    }]
+
+
+                    return new FeatureLayer({
+                        source: graphics, // autocast as an array of esri/Graphic
+                        // create an instance of esri/layers/support/Field for each field object
+                        fields: fields, // This is required when creating a layer from Graphics
+                        objectIdField: "id", // This must be defined when creating a layer from Graphics
+                        renderer: featureLayer.renderer, // set the visualization on the layer
+                        popupTemplate: featureLayer.popupTemplate,
+                        title: "myLayer" + index
+                    });
+                }
+
+
+            });
+    </script>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+</body>
+
+</html>

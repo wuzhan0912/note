@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Intro to FeatureLayer - 4.9</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+    <script src="https://js.arcgis.com/4.9/"></script>
+
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* #extra {
+            background: linear-gradient(to right, red, blue);
+            /* 标准的语法 */
+        /*} */
+    </style>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/layers/GraphicsLayer", "esri/Graphic"
+        ],
+            function (
+                Map, MapView,
+                FeatureLayer, GraphicsLayer, Graphic
+            ) {
+
+                var map = new Map({
+                    basemap: "hybrid" //dark-gray
+                });
+
+                var view = new MapView({
+                    container: "viewDiv",
+                    map: map,
+
+                    center: [114.11, 22.35],
+                    scale: 500000
+                });
+
+
+                var presentShowList = [];
+
+                var pageEnum = [{
+                    name: "养老压力指数",
+                    url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_WFL1/FeatureServer/4",
+                    opacityFieldName: "pension_quota"
+                }, {
+                    name: "医疗压力指数",
+                    url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_WFL1/FeatureServer/5",
+                    opacityFieldName: "hospital_quota"
+                }, {
+                    name: "教育压力指数",
+                    url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_WFL1/FeatureServer/6",
+                    opacityFieldName: "education_quota",
+                }]
+
+                /********************
+                 * Add feature layer
+                 ********************/
+
+                // Carbon storage of trees in Warren Wilson College.
+                var featureLayer = new FeatureLayer({
+                    url: getCurrentUrl()
+                });
+
+                map.add(featureLayer);
+
+                var oldRenderer = {};
+
+                featureLayer.when(function () {
+
+                    var renderer = featureLayer.renderer.clone();
+                    oldRenderer = featureLayer.renderer.clone();
+                    renderer.visualVariables[0].stops[1].opacity = 0.00006;
+                    featureLayer.renderer = renderer;
+
+                    console.log("pageId" + getQueryString("pageId"));
+                });
+
+                view.whenLayerView(featureLayer).then(QueryAndModify)
+
+                function getCurrentUrl() {
+                    var pageId = 0;
+                    return getEnum().url
+                }
+
+                function getEnum() {
+                    var pageId = 0;
+                    if (getQueryString("pageId")["pageId"]) {
+                        pageId = getQueryString("pageId")["pageId"];
+                    }
+                    return pageEnum[pageId];
+                }
+
+                function getCurrentOpacity() {
+                    return getEnum().opacityFieldName;
+                }
+
+                function QueryAndModify() {
+                    // apply the new renderer to the layer
+
+                    hoverPromise = featureLayer.queryFeatures(featureLayer.createQuery());
+                    hoverPromise.then(
+                        function (result) {
+                            var features = result.features;
+                            start(features);
+                        });
+                }
+
+                function start(features) {
+                    window.setInterval(function () {
+                        modify(features);
+                    }, 1000);
+                }
+
+                function isIn(id) {
+                    for (var i = 0; i < presentShowList.length; i++) {
+                        if (id == presentShowList[i]) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                function modify(features) {
+
+                    for (var i = 0; i < features.length; i++) {
+                        if (!isIn(i)) {
+                            presentShowList.push(i);
+                            return render(features, i);;
+                        }
+                    }
+
+                }
+
+
+                function render(features, index) {
+
+                    console.log(JSON.stringify(presentShowList));
+
+
+                    if (index == 0) {
+                        var layer = new GraphicsLayer();
+                        layer.title = "graphicsLayer"
+                        //layer.renderer = featureLayer.renderer.clone();  //可以删除?
+                        map.add(layer);
+                    }
+
+                    var foundLayer = map.allLayers.find(function (layer) {
+                        return layer.title === "graphicsLayer";
+                    });
+
+                    foundLayer.graphics.add(createGraphic(features, index));
+
+                    console.log("render end ...")
+
+                }
+
+                function getQueryString() {
+                    var qs = location.search.substr(1), // 获取url中"?"符后的字串  
+                        args = {}, // 保存参数数据的对象
+                        items = qs.length ? qs.split("&") : [], // 取得每一个参数项,
+                        item = null,
+                        len = items.length;
+
+                    for (var i = 0; i < len; i++) {
+                        item = items[i].split("=");
+                        var name = decodeURIComponent(item[0]),
+                            value = decodeURIComponent(item[1]);
+                        if (name) {
+                            args[name] = value;
+                        }
+                    }
+                    return args;
+                }
+
+                function createGraphic(features, index) {
+                    var graphicA = new Graphic(); // graphic with line geometry
+                    graphicA.geometry = features[index].geometry;
+                    graphicA.attributes = features[index].attributes;
+
+                    graphicA.attributes[getCurrentOpacity()] = features[index].attributes[getCurrentOpacity()];
+
+                    graphicA.symbol = oldRenderer.symbol.clone();
+                    var color = graphicA.symbol.color;
+                    var max = oldRenderer.visualVariables[0].stops[1].value;
+                    var percent = oldRenderer.visualVariables[0].stops[1].opacity;
+                    graphicA.symbol.color = [color.r, color.g, color.b, graphicA.attributes[getCurrentOpacity()] *
+                        percent / max
+                    ]
+                    return graphicA;
+                }
+
+                function createLayer(features, index) {
+
+                    var graphics = []
+                    for (var i = 0; i < features.length; i++) {
+
+                        var graphicA = new Graphic(); // graphic with line geometry
+                        graphicA.geometry = features[i].geometry;
+                        graphicA.attributes = {};
+                        graphicA.attributes.id = features[i].attributes.id;
+                        graphicA.attributes.name = features[i].attributes.name;
+                        if (i > index) {
+                            graphicA.attributes[getCurrentOpacity()] = 0
+                        } else {
+                            graphicA.attributes[getCurrentOpacity()] = 90
+                        }
+                        graphicA.symbol = featureLayer.renderer.symbol;
+                        graphics.push(graphicA)
+
+                    }
+
+                    var fields = [{
+                        name: "id",
+                        alias: "id",
+                        type: "oid"
+                    }, {
+                        name: "name",
+                        alias: "name",
+                        type: "string"
+                    }, {
+                        name: getCurrentOpacity(),
+                        alias: getCurrentOpacity(),
+                        type: "double"
+                    }]
+
+
+                    return new FeatureLayer({
+                        source: graphics, // autocast as an array of esri/Graphic
+                        // create an instance of esri/layers/support/Field for each field object
+                        fields: fields, // This is required when creating a layer from Graphics
+                        objectIdField: "id", // This must be defined when creating a layer from Graphics
+                        renderer: featureLayer.renderer, // set the visualization on the layer
+                        popupTemplate: featureLayer.popupTemplate,
+                        title: "myLayer" + index
+                    });
+                }
+                view.ui.add(document.getElementById("extra"), "bottom-right")
+
+            });
+    </script>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+    <div id="extra" style="background: linear-gradient(to right, rgba(255,0,0,1), rgba(255,0,0,0))">11111111S</div>
+</body>
+
+</html>

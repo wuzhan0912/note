@@ -1,0 +1,10 @@
+##logger 和 root的关系
+
+Log4j或logback的配置文件中，root和logger是父子的关系。 
+
+Logger的appender根据参数additivity决定是否要叠加root的appender，logger的级别是其自身定义的级别，和root的级别没什么关系。 
+
+
+
+判断一个类的日志输出情况，首先找到这个类所在的logger（没有特别定义则默认为root），然后根据以上规则判断出这个logger的appender和level。然后既可以知道这个类的哪些日志会被输出到哪些地方了。注意：任何一个类只会和一个logger对应，要么是定义的logger，要么是root，判断的关键在于找到这个logger，然后判断这个logger的appender和level。 
+

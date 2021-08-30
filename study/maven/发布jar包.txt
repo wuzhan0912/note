@@ -1,0 +1,26 @@
+mvn install:install-file -Dfile=/Users/harlan/Downloads/sdk-java-25010905/taobao-sdk-java-auto_1453714508518-20180804.jar -DgroupId=com.taobao -DartifactId=taobao-sdk-java-auto -Dversion=1453714508518-20180804 -Dpackaging=jar  
+
+install:install-file   -Dfile=/Users/harlan/Downloads/sdk-java-25010905/taobao-sdk-java-auto_1453714508518-20180804.jar    -DgroupId=com.taobao  -DartifactId=taobao-sdk-java-auto  -Dversion=1453714508518-20180804    -Dpackaging=jar 
+
+
+deploy:deploy-file  -Dfile=/Users/harlan/Downloads/sdk-java-25010905/taobao-sdk-java-auto_1514187532207-20180806.jar    -DgroupId=com.taobao  -DartifactId=taobao-sdk-java-auto  -Dversion=1514187532207-20180806    -Dpackaging=jar  -Durl=http://maven.ipo.com/nexus/content/repositories/releases/  -DrepositoryId=releases  
+deploy:deploy-file  -Dfile=/Users/harlan/Downloads/sdk-java-25010905/taobao-sdk-java-auto_1514187532207-20180806-source.jar    -DgroupId=com.taobao  -DartifactId=taobao-sdk-java-auto  -Dversion=1514187532207-20180806  -Dclassifier=sources    -Dpackaging=jar  -Durl=http://maven.ipo.com/nexus/content/repositories/releases/  -DrepositoryId=releases  
+
+
+1514187532207-20180806
+
+
+
+
+taobao-sdk-java-auto_1453714508518-20180804
+
+taobao-sdk-java-auto_1453714508518-20180804-source
+
+mvn install:install-file -Dfile=taobao-sdk-java-auto_1453714508518-20180804.jar -DgroupId=com.taobao -DartifactId=taobao-sdk-java-auto -Dversion=1453714508518-20180804 -Dpackaging=jar
+
+
+
+idea 右上角的maven 虚化的✅仪式上是默认值
+
+
+

@@ -1,0 +1,562 @@
+diff --git a/src/enter.js b/src/enter.js
+index 810d341..60f06a3 100644
+--- a/src/enter.js
++++ b/src/enter.js
+@@ -58,6 +58,18 @@ require([
+     ]
+     let currentEnum = pageEnum[0]
+ 
++    const economicSource = {    // 经济机构分布地图
++      layer: new FeatureLayer({
++        // url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_4_WFL1/FeatureServer/0",
++        // url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_4_WFL1/FeatureServer/2",
++        url: "https://services9.arcgis.com/WqJrP6YkEoEbnzZO/ArcGIS/rest/services/gislab_4_WFL1/FeatureServer/0",
++        id: 'layer_economic',
++        title: 'layer_economic',
++        visible: true,
++        outFields: ['*']
++      })
++    }
++
+ 
+     const pensionSource = {
+       layer: new FeatureLayer({
+@@ -202,7 +214,7 @@ require([
+             symbolLayers: [{
+               type: "extrude",
+               size: 500,
+-              material: {color: "rgba(0,0,0,0.1)"}
++              material: { color: "rgba(0,0,0,0.1)" }
+             }]
+           }
+         }
+@@ -265,7 +277,8 @@ require([
+         streetSource.layer,
+         eduWayAnalyze.layer,
+         eduSubWayAnalyze.layer,
+-        fineBuilding.layer
++        fineBuilding.layer,
++        economicSource.layer
+       ]
+     });
+ 
+@@ -304,8 +317,9 @@ require([
+         createSlide('街道资源', ['layer_background', 'layer_fence', 'layer_building', 'layer_street']),
+         createSlide('教育资源',
+           ['layer_background', 'layer_fence', 'layer_edu_way_analyze', 'layer_edu_subway_analyze', 'layer_building', 'layer_fine_building'],
+-          {tilt: 45, heading: 0, fov: 55, position: [114.1926612, 22.3052819, 7000]}
+-        )
++          { tilt: 45, heading: 0, fov: 55, position: [114.1926612, 22.3052819, 7000] },
++        ),
++        createSlide('经济机构分布地图', ['layer_background', 'layer_fence', 'layer_building', 'layer_economic']),
+       ];
+       const backupSlide = scene.presentation.slides;
+       scene.presentation.slides = slides;
+@@ -325,7 +339,7 @@ require([
+ 
+     // 图层创建完成--开始一些图层数据初始化
+     view.on('layerview-create', function (event) {
+-      const {layer, layerView} = event;
++      const { layer, layerView } = event;
+       // TODO 全局数据图层
+       if (layer.id === 'layer_district') {
+         console.info('District has loaded');
+@@ -422,6 +436,16 @@ require([
+           resetAnimation();
+         })
+       }
++      // poi图层
++      else if (layer.id === "layer_economic") {
++        console.info('layer_economic has loaded');
++        // 进入场景-需要展现的图层
++        dojoOn(dojoDom.byId('economic'), 'click', function (event) {
++          graphicsSource.layer.graphics.removeAll();
++          scene.presentation.slides.getItemAt(7).applyTo(view);
++          resetAnimation();
++        })
++      }
+     }, function (error) {
+       console.error('Layerview-create Error:', error);
+     })
+@@ -487,6 +511,7 @@ require([
+       levelingAnimation();
+       streetAnimation(streetSource.features[streetSource.selectIndex]);
+       eduAnalyzeAni();
++      economicAmimation();
+     }
+ 
+     // TODO POI 渲染器重设
+@@ -505,9 +530,9 @@ require([
+           clearInterval(timer);
+           return false;
+         }
+-        poiRenderer(counter % 2);
++        poiSource.layer.renderer = poiRenderer(counter % 2);
+         counter++;
+-      }, 176);
++      }, 376);
+     }
+     function poiRenderer(counter) {
+       const poiColors = [
+@@ -516,7 +541,7 @@ require([
+         ['rgba(0, 170, 255, 1)', 'rgba(0, 170, 255, 0.8)', 'rgba(0, 170, 255, 0.3)']
+       ];
+       const poiSize = [11, 15];
+-      poiSource.layer.renderer = {
++      return {
+         type: "unique-value",
+         field: "source_type",
+         uniqueValueInfos: [
+@@ -525,7 +550,7 @@ require([
+             label: '养老',
+             symbol: {
+               type: "simple-marker",
+-              size: 9,
++              size: 20,
+               color: poiColors[0][0],
+               outline: {
+                 width: 0
+@@ -615,9 +640,9 @@ require([
+             type: "size",
+             valueExpression: "$feature.point_num",
+             stops: [
+-              {value: 0, size: 2},
+-              {value: 40, size: 8},
+-              {value: 100, size: poiSize[counter]}
++              { value: 0, size: 2 + util.random(0, 14) / 10 },
++              { value: 40, size: 6 + util.random(8, 21) / 10 },
++              { value: 100, size: 10 + util.random(10, 40) / 10 }
+             ]
+           }
+         ]
+@@ -644,7 +669,7 @@ require([
+ 
+     // TODO 资源平衡 
+     function levelingAnimation() {
+-      let {chart1, chart2} = streetSource;  // 为了清空街道资源的
++      let { chart1, chart2 } = streetSource;  // 为了清空街道资源的
+       if (!levelingSource.layer.visible) {
+         !!chart1 && chart1.dispose();
+         !!chart2 && chart2.dispose();
+@@ -666,7 +691,7 @@ require([
+         })
+         .map((element, index) => {
+           // TODO element.attributes.education_quota
+-          let opc = 1 - 0.1 - 0.6 * (66-11-element.attributes.colligate_quota) / (66 - 11);
++          let opc = 1 - 0.1 - 0.6 * (66 - 11 - element.attributes.colligate_quota) / (66 - 11);
+           let graphic = new Graphic({
+             geometry: element.geometry,
+             symbol: {
+@@ -753,7 +778,7 @@ require([
+ 
+     // TODO 街道资源
+     function streetAnimation(graphic) {
+-      let {chart1, chart2} = streetSource;
++      let { chart1, chart2 } = streetSource;
+       if (!streetSource.layer.visible) {
+         !!chart1 && chart1.dispose();
+         !!chart2 && chart2.dispose();
+@@ -763,7 +788,7 @@ require([
+ 
+       util.addTempHtml("temp-street", streetSource);
+ 
+-      const {cname, district_code, education_quota, pension_quota, hospital_quota} = graphic.attributes;
++      const { cname, district_code, education_quota, pension_quota, hospital_quota } = graphic.attributes;
+       const district = districtSource.data[district_code];
+ 
+       chart1 = ch('radar', "#radar")
+@@ -771,9 +796,9 @@ require([
+         .legend([`${cname}`, `${district.name}`])
+         .radar({
+           indicator: [
+-            {name: '养老', max: Math.max(pension_quota, district.pension_quota)},
+-            {name: '教育', max: Math.max(education_quota, district.education_quota)},
+-            {name: '医疗', max: Math.max(hospital_quota, district.hospital_quota)},
++            { name: '养老', max: Math.max(pension_quota, district.pension_quota) },
++            { name: '教育', max: Math.max(education_quota, district.education_quota) },
++            { name: '医疗', max: Math.max(hospital_quota, district.hospital_quota) },
+           ]
+         })
+         .series([{
+@@ -809,19 +834,19 @@ require([
+       const cData = {
+         education: districtData.education.map((v, i) => {
+           if (i === cIndex) {
+-            return {value: v, itemStyle: {normal: {opacity: .5}}}
++            return { value: v, itemStyle: { normal: { opacity: .5 } } }
+           }
+           return v;
+         }),
+         hospital: districtData.hospital.map((v, i) => {
+           if (i === cIndex) {
+-            return {value: v, itemStyle: {normal: {opacity: .5}}}
++            return { value: v, itemStyle: { normal: { opacity: .5 } } }
+           }
+           return v;
+         }),
+         pension: districtData.pension.map((v, i) => {
+           if (i === cIndex) {
+-            return {value: v, itemStyle: {normal: {opacity: .5}}}
++            return { value: v, itemStyle: { normal: { opacity: .5 } } }
+           }
+           return v;
+         })
+@@ -844,7 +869,7 @@ require([
+           name: barLegend[2],
+           data: cData.hospital,
+         }
+-        ], {stack: 'streetBar'})
++        ], { stack: 'streetBar' })
+         .setOption();
+       streetSource.chart2 = chart2;
+       // 选中版块
+@@ -855,19 +880,19 @@ require([
+         const data = {
+           education: districtData.education.map((v, i) => {
+             if (i === index) {
+-              return {value: v, itemStyle: {normal: {opacity: .5}}}
++              return { value: v, itemStyle: { normal: { opacity: .5 } } }
+             }
+             return v;
+           }),
+           hospital: districtData.hospital.map((v, i) => {
+             if (i === index) {
+-              return {value: v, itemStyle: {normal: {opacity: .5}}}
++              return { value: v, itemStyle: { normal: { opacity: .5 } } }
+             }
+             return v;
+           }),
+           pension: districtData.pension.map((v, i) => {
+             if (i === index) {
+-              return {value: v, itemStyle: {normal: {opacity: .5}}}
++              return { value: v, itemStyle: { normal: { opacity: .5 } } }
+             }
+             return v;
+           })
+@@ -896,7 +921,7 @@ require([
+ 
+         streetSource.features.forEach((item, index) => {
+           if (item.attributes.cname == params.name) {
+-            const {cname, education_quota, pension_quota, hospital_quota} = item.attributes;
++            const { cname, education_quota, pension_quota, hospital_quota } = item.attributes;
+             // 更新radar          
+             chart1.setOption({
+               title: {
+@@ -907,9 +932,9 @@ require([
+               },
+               radar: [{
+                 indicator: [
+-                  {name: '养老', max: Math.max(pension_quota, district.pension_quota)},
+-                  {name: '教育', max: Math.max(education_quota, district.education_quota)},
+-                  {name: '医疗', max: Math.max(hospital_quota, district.hospital_quota)},
++                  { name: '养老', max: Math.max(pension_quota, district.pension_quota) },
++                  { name: '教育', max: Math.max(education_quota, district.education_quota) },
++                  { name: '医疗', max: Math.max(hospital_quota, district.hospital_quota) },
+                 ]
+               }],
+               series: [{
+@@ -939,7 +964,7 @@ require([
+     // TODO 教育资源分析动画
+     function eduAnalyzeAni() {
+       if (!eduWayAnalyze.layer.visible) {
+-        let {pie1, pie2, pie3, chartBar, chartLine} = eduWayAnalyze;
++        let { pie1, pie2, pie3, chartBar, chartLine } = eduWayAnalyze;
+         !!pie1 && pie1.dispose();
+         !!pie2 && pie2.dispose();
+         !!pie3 && pie3.dispose();
+@@ -1019,11 +1044,11 @@ require([
+       foundLayer.visible = false;
+ 
+       if (pensionSource.layer.visible) {
+-        QueryAndModify(pensionSource.layer, {r: 89, g: 9, b: 159})    //59099f
++        QueryAndModify(pensionSource.layer, { r: 89, g: 9, b: 159 })    //59099f
+       } else if (educationSource.layer.visible) {
+-        QueryAndModify(educationSource.layer, {r: 0, g: 145, b: 11})  //#00916f
++        QueryAndModify(educationSource.layer, { r: 0, g: 145, b: 11 })  //#00916f
+       } else if (hospitalSource.layer.visible) {
+-        QueryAndModify(hospitalSource.layer, {r: 0, g: 96, b: 198})   //0060c6
++        QueryAndModify(hospitalSource.layer, { r: 0, g: 96, b: 198 })   //0060c6
+       }
+     }
+ 
+@@ -1079,6 +1104,34 @@ require([
+       return graphicA;
+     }
+ 
++    // 经济机构分布地图
++    function economicAmimation() {
++      console.log("economicAmimation start");
++      if (!economicSource.layer.visible) {
++        return;
++      }
++
++
++      util.queryAllFeature(economicSource.layer).then(function (res) {
++        console.log(res)
++        res.features.forEach(function (item, index) {
++          console.log(item.attributes);
++        });
++        districtSource.features = res.features;
++      })
++
++      // let counter = 1;
++      // const timer = setInterval(function () {
++      //   if (!economicSource.layer.visible) {
++      //     clearInterval(timer);
++      //     return false;
++      //   }
++      //   economicSource.layer.renderer = poiRenderer(counter % 2);
++      //   counter++;
++      // }, 176);
++
++    }
++
+ 
+     // TODO 新建一个slide幻灯片
+ 
+@@ -1089,7 +1142,7 @@ require([
+       return new Slide({
+         description: desc,
+         visibleLayers: layers.map(function (item) {
+-          return {id: item}
++          return { id: item }
+         }),
+         viewpoint: {
+           camera: camera
+diff --git a/src/index.html b/src/index.html
+index b0e2693..1762b9c 100644
+--- a/src/index.html
++++ b/src/index.html
+@@ -38,6 +38,12 @@
+             <span>
+                 <i class="esri-icon-radio-checked"></i>教育资源</span>
+         </li>
++
++        <li id="economic">
++            <span>
++                <i class="esri-icon-radio-checked"></i>经济机构</span>
++        </li>
++
+     </ul>
+     <div class="divWrap" id="divWrap"></div>
+     <!-- <div class="divWrap" id="divWrap">
+diff --git a/src/util.js b/src/util.js
+index c5b489e..af88768 100644
+--- a/src/util.js
++++ b/src/util.js
+@@ -66,6 +66,11 @@ const util = {
+         node.innerHTML = '';
+     },
+ 
++    random: function (m, n) {
++        var num = Math.floor(Math.random() * (m - n) + n);
++        return num;
++    },
++
+     // 返回一个渐变条的div 位置在右下角
+     creatGradualChangeBar: function (r, g, b, a) {
+         r = r || 0;
+@@ -133,7 +138,7 @@ function getPieChartOption(e) {
+             radius: ['65%', '85%'],
+             avoidLabelOverlap: true,
+             hoverAnimation: false,
+-            color: ['#4458FF','grey'],
++            color: ['#4458FF', 'grey'],
+             label: {
+                 normal: {
+                     show: false,
+@@ -224,13 +229,13 @@ barChartOption = {
+                 color: new echarts.graphic.LinearGradient(
+                     1, 0, 0, 0,
+                     [{
+-                            offset: 0,
+-                            color: '#01CDEE'
+-                        },
+-                        {
+-                            offset: 1,
+-                            color: '#4458FF'
+-                        }
++                        offset: 0,
++                        color: '#01CDEE'
++                    },
++                    {
++                        offset: 1,
++                        color: '#4458FF'
++                    }
+ 
+                     ]
+                 )
+@@ -241,77 +246,77 @@ barChartOption = {
+ 
+ function getBarOption(levelingSource) {
+     return {
+-      title: {
+-        text: '区域资源综合压力指数',
+-        show: false,
+-        // itemGap:0
+-      },
+-      grid: {
+-        top: 2,
+-        bottom: 60,
+-        left: 50
+-      },
+-      tooltip: {},
+-      legend: {
+-        data: ['指数'],
+-        show: false,
+-      },
+-      xAxis: {
+-        splitLine: {
+-          show: false
+-        },
+-        splitArea: {
+-          show: false
+-        },
+-        axisTick: {
+-          show: false
+-        },
+-        axisLabel: {
+-          show: false
+-        },
+-        axisPointer: {
+-          show: false
+-        },
+-        axisLine: {
+-          lineStyle: {
+-            color: '#fff',
+-            width: 0, //这里是坐标轴的宽可以去掉
+-          }
+-        }
+-      },
+-      yAxis: {
+-        splitLine: {
+-          show: false
++        title: {
++            text: '区域资源综合压力指数',
++            show: false,
++            // itemGap:0
+         },
+-        splitArea: {
+-          show: false
++        grid: {
++            top: 2,
++            bottom: 60,
++            left: 50
+         },
+-        axisTick: {
+-          show: false
++        tooltip: {},
++        legend: {
++            data: ['指数'],
++            show: false,
+         },
+-        axisLine: {
+-          lineStyle: {
+-            color: '#fff',
+-            width: 0, //这里是坐标轴的宽可以去掉
+-          }
++        xAxis: {
++            splitLine: {
++                show: false
++            },
++            splitArea: {
++                show: false
++            },
++            axisTick: {
++                show: false
++            },
++            axisLabel: {
++                show: false
++            },
++            axisPointer: {
++                show: false
++            },
++            axisLine: {
++                lineStyle: {
++                    color: '#fff',
++                    width: 0, //这里是坐标轴的宽可以去掉
++                }
++            }
+         },
+-        axisLabel: {
+-            // margin: 6,
+-            color: "#fff"
+-            // rotate: 45,
+-            // width: 80
++        yAxis: {
++            splitLine: {
++                show: false
++            },
++            splitArea: {
++                show: false
++            },
++            axisTick: {
++                show: false
++            },
++            axisLine: {
++                lineStyle: {
++                    color: '#fff',
++                    width: 0, //这里是坐标轴的宽可以去掉
++                }
++            },
++            axisLabel: {
++                // margin: 6,
++                color: "#fff"
++                // rotate: 45,
++                // width: 80
++            },
++            data: levelingSource.names
+         },
+-        data: levelingSource.names
+-      },
+-      series: [{
+-        barWidth: 14,
+-        barCategoryGap: '20%',
+-        itemStyle: {
+-            normal: {
+-                barBorderRadius: [10, 10, 10, 10],
+-                color: new echarts.graphic.LinearGradient(
+-                    1, 0, 0, 0,
+-                    [{
++        series: [{
++            barWidth: 14,
++            barCategoryGap: '20%',
++            itemStyle: {
++                normal: {
++                    barBorderRadius: [10, 10, 10, 10],
++                    color: new echarts.graphic.LinearGradient(
++                        1, 0, 0, 0,
++                        [{
+                             offset: 0,
+                             color: '#01CDEE'
+                         },
+@@ -320,16 +325,16 @@ function getBarOption(levelingSource) {
+                             color: '#4458FF'
+                         }
+ 
+-                    ]
+-                )
++                        ]
++                    )
++                },
++                emphasis: {
++                    color: 'yellow'
++                }
+             },
+-          emphasis: {
+-            color: 'yellow'
+-          }
+-        },
+-        name: '指数',
+-        type: 'bar',
+-        data: levelingSource.values
+-      }]
++            name: '指数',
++            type: 'bar',
++            data: levelingSource.values
++        }]
+     };
+-  }
+\ No newline at end of file
++}
+\ No newline at end of file

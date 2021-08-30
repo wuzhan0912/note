@@ -1,0 +1,1 @@
+@query注解 自己写sql是记得加@modify(clearAuto=true) 用来清除缓存，以便后续能查询到
